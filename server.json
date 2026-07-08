@@ -1,0 +1,36 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.yusufihsangorgel/queue-inspector-mcp",
+  "description": "Inspect and operate Redis-backed job queues (Asynq and BullMQ) over MCP.",
+  "repository": {
+    "url": "https://github.com/Yusufihsangorgel/queue-inspector-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "queue-inspector-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "REDIS_URL",
+          "description": "Redis connection string (default redis://localhost:6379).",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "QUEUE_INSPECTOR_READ_ONLY",
+          "description": "Set to 1 to omit the mutating retry_job/delete_job tools.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}
