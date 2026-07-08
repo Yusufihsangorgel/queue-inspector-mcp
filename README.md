@@ -1,5 +1,9 @@
 # queue-inspector-mcp
 
+[![npm](https://img.shields.io/npm/v/queue-inspector-mcp)](https://www.npmjs.com/package/queue-inspector-mcp) [![Yusufihsangorgel/queue-inspector-mcp MCP server](https://glama.ai/mcp/servers/Yusufihsangorgel/queue-inspector-mcp/badges/score.svg)](https://glama.ai/mcp/servers/Yusufihsangorgel/queue-inspector-mcp)
+
+![queue-inspector-mcp — agent inspects Redis job queues by jobs, not keys](https://raw.githubusercontent.com/Yusufihsangorgel/queue-inspector-mcp/main/doc/cover.png)
+
 An MCP server that lets an agent inspect and operate Redis-backed job queues. It
 speaks to two backends today, [Asynq](https://github.com/hibiken/asynq) (Go) and
 [BullMQ](https://github.com/taskforcesh/bullmq) (Node), reporting per-state
