@@ -1,0 +1,55 @@
+{
+  "name": "queue-inspector-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for inspecting and operating Redis-backed job queues (Asynq and BullMQ).",
+  "type": "module",
+  "bin": {
+    "queue-inspector-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc && node scripts/copy-assets.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "modelcontextprotocol",
+    "redis",
+    "queue",
+    "bullmq",
+    "asynq",
+    "jobs"
+  ],
+  "author": "Yusuf İhsan Görgel",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Yusufihsangorgel/queue-inspector-mcp"
+  },
+  "homepage": "https://github.com/Yusufihsangorgel/queue-inspector-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Yusufihsangorgel/queue-inspector-mcp/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.0",
+    "ioredis": "^5.4.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
