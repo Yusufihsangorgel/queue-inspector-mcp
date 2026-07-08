@@ -2,12 +2,31 @@
 
 [![npm](https://img.shields.io/npm/v/queue-inspector-mcp)](https://www.npmjs.com/package/queue-inspector-mcp) [![Yusufihsangorgel/queue-inspector-mcp MCP server](https://glama.ai/mcp/servers/Yusufihsangorgel/queue-inspector-mcp/badges/score.svg)](https://glama.ai/mcp/servers/Yusufihsangorgel/queue-inspector-mcp)
 
-![queue-inspector-mcp — agent inspects Redis job queues by jobs, not keys](https://raw.githubusercontent.com/Yusufihsangorgel/queue-inspector-mcp/main/doc/cover.png)
-
 An MCP server that lets an agent inspect and operate Redis-backed job queues. It
 speaks to two backends today, [Asynq](https://github.com/hibiken/asynq) (Go) and
 [BullMQ](https://github.com/taskforcesh/bullmq) (Node), reporting per-state
 counts, individual job detail, and moving jobs between states.
+
+## Architecture
+
+```mermaid
+---
+config:
+  look: handDrawn
+---
+flowchart LR
+    A["AI agent"] -->|"MCP · stdio"| M["queue-inspector-mcp"]
+    M --> B1["Asynq adapter<br/>protobuf msg"]
+    M --> B2["BullMQ adapter<br/>state by zset"]
+    B1 -->|ioredis| R[("Redis")]
+    B2 -->|ioredis| R
+    M -.->|"--read-only<br/>drops mutating tools"| G{{"prod-safe"}}
+```
+
+The server speaks MCP over stdio to the agent and talks to Redis through
+per-backend adapters that understand each library's on-disk layout — Asynq's
+protobuf task messages and BullMQ's state-by-membership sorted sets — instead of
+treating Redis as a bag of keys.
 
 ## Why
 
@@ -100,6 +119,24 @@ configuration for pointing an agent at a production database.
 The two libraries model job lifecycles differently, so this server does not
 invent a shared vocabulary. It reports each backend's own state names, and each
 state maps to a specific Redis structure.
+
+A job moves through these states over its lifetime (Asynq shown):
+
+```mermaid
+---
+config:
+  look: handDrawn
+---
+stateDiagram-v2
+    [*] --> pending: enqueue
+    pending --> active: worker picks up
+    active --> completed: success
+    active --> retry: handler error
+    retry --> active: backoff elapsed
+    retry --> archived: retries exhausted
+    archived --> pending: retry_job
+    completed --> [*]
+```
 
 Asynq:
 
