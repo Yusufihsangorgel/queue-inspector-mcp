@@ -1,0 +1,14 @@
+{
+  "name": "bullmq-producer",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Seeds a Redis DB with real BullMQ jobs in known states for adapter verification and tests.",
+  "scripts": {
+    "seed": "node index.mjs"
+  },
+  "dependencies": {
+    "bullmq": "^5.34.0",
+    "ioredis": "^5.4.1"
+  }
+}
