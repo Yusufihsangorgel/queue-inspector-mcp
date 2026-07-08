@@ -1,0 +1,32 @@
+// Minimal copy of the TaskMessage definition from Asynq
+// (github.com/hibiken/asynq, internal/proto/asynq.proto, MIT license, v0.25.1).
+//
+// Asynq stores each task's metadata as a protobuf-encoded TaskMessage in the
+// `msg` field of the task hash (asynq:{<queue>}:t:<id>). Only TaskMessage is
+// reproduced here, and only as documentation for the field numbers the decoder
+// in ../asynq-proto.ts relies on. Note the non-sequential numbering: the wire
+// order does not follow the declaration order, which is exactly why the field
+// numbers must be read from the schema rather than guessed.
+//
+// Full upstream schema also defines ServerInfo, WorkerInfo, SchedulerEntry and
+// SchedulerEnqueueEvent, none of which this tool needs.
+
+syntax = "proto3";
+package asynq;
+
+message TaskMessage {
+  string type = 1;           // task type name
+  bytes payload = 2;         // task payload (opaque; usually JSON)
+  string id = 3;             // task id
+  string queue = 4;          // queue name
+  int32 retry = 5;           // max retries configured
+  int32 retried = 6;         // number of retries so far
+  string error_msg = 7;      // last failure message
+  int64 timeout = 8;         // timeout in seconds
+  int64 deadline = 9;        // deadline, unix seconds
+  string unique_key = 10;    // uniqueness lock key
+  int64 last_failed_at = 11; // last failure time, unix seconds
+  int64 retention = 12;      // completed-task retention in seconds
+  int64 completed_at = 13;   // completion time, unix seconds
+  string group_key = 14;     // task aggregation group
+}
