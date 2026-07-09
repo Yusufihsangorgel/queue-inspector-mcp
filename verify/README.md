@@ -34,6 +34,23 @@ cd asynq-producer
 REDIS_DB=15 go run .
 ```
 
+## sidekiq-producer
+
+A small Ruby project (Gemfile pins the real `sidekiq ~> 6.5`) that seeds a known
+mix of states: two enqueued jobs in `emails` and one in `critical` via the real
+`Sidekiq::Client`, a drained-but-registered `reports` queue, one scheduled job,
+two retry-set entries and one dead-set entry. The retry and dead entries are
+written by Sidekiq's own server-side retry handler (`Sidekiq::JobRetry#global`),
+so the bytes in Redis are exactly what a failing worker would produce — not a
+hand-rolled guess at the retry payload. Verified against **Sidekiq 6.5.12** (the
+version `bundle install` resolves on Ruby 2.6).
+
+```bash
+cd sidekiq-producer
+bundle install            # installs sidekiq into vendor/bundle
+REDIS_DB=15 bundle exec ruby producer.rb
+```
+
 ## What this established
 
 - Asynq stores task metadata as a protobuf `TaskMessage` in the `msg` field of
@@ -43,5 +60,12 @@ REDIS_DB=15 go run .
 - BullMQ stores each job as a hash and decides its state by which list or sorted
   set holds the id. `attemptsMade` is the `atm` field; the configured ceiling is
   `opts.attempts`.
-- Retry and delete are done with each library's own scripts, so the tool mutates
-  state exactly the way the library would.
+- Sidekiq stores each job as the JSON member of a list (`queue:<name>`, LPUSHed)
+  or a global sorted set (`schedule`, `retry`, `dead`, scored by run/retry/death
+  time). There is no per-job hash and no jid index, so a job is found by scanning
+  the structure, exactly as `Sidekiq::Queue#find_job` / `JobSet#find_job` do. A
+  retry entry adds `error_message`, `error_class`, `retry_count` (0 after the
+  first failure) and `failed_at`; `retried_at` appears on subsequent failures.
+- Retry and delete are done with each library's own scripts (Sidekiq ships none,
+  so its retry is reproduced faithfully in a small vendored script), so the tool
+  mutates state exactly the way the library would.

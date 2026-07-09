@@ -25,6 +25,17 @@ export function seedAsynq(): void {
   });
 }
 
+/** Runs the Sidekiq producer (Ruby). It seeds enqueued/scheduled jobs via the
+ *  real client and retry/dead entries via Sidekiq's own retry handler, clearing
+ *  only its own keys first. Requires `bundle install` in verify/sidekiq-producer. */
+export function seedSidekiq(): void {
+  execFileSync("bundle", ["exec", "ruby", "producer.rb"], {
+    cwd: `${verifyDir}sidekiq-producer`,
+    env: { ...process.env, REDIS_DB: String(TEST_DB) },
+    stdio: "ignore",
+  });
+}
+
 export function testRedis(): Redis {
   return new Redis(TEST_URL);
 }

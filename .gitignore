@@ -9,3 +9,4 @@ coverage/
 # verify/ producers install their own dependencies and build artifacts
 verify/**/node_modules/
 verify/asynq-producer/asynq-producer
+verify/sidekiq-producer/vendor/

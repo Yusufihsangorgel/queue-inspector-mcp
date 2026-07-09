@@ -12,16 +12,19 @@ you need:
 
 - Node.js 18+
 - Go (for the Asynq producer)
+- Ruby with Bundler (for the Sidekiq producer; Sidekiq 6.5 supports Ruby 2.5+)
 - A reachable Redis (the suite uses a dedicated DB and cleans up after itself)
 
 ```bash
 npm ci
-npm install --prefix verify/bullmq-producer   # deps for the BullMQ producer
+npm install --prefix verify/bullmq-producer               # deps for the BullMQ producer
+(cd verify/sidekiq-producer && bundle install)            # deps for the Sidekiq producer
 npm run build
 npm test
 ```
 
-`verify/asynq-producer` (Go) and `verify/bullmq-producer` (Node) seed real jobs;
+`verify/asynq-producer` (Go), `verify/bullmq-producer` (Node) and
+`verify/sidekiq-producer` (Ruby) seed real jobs;
 the adapters are then asserted against what the libraries actually wrote. If you
 change an adapter, the corresponding producer is the ground truth — update the
 producer to reproduce the state you're handling, not just the test's

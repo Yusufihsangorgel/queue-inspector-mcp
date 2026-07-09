@@ -8,6 +8,7 @@ export interface Scripting {
   removeJob: Caller;
   runTask: Caller;
   deleteTask: Caller;
+  sidekiqRequeue: Caller;
 }
 
 const METHOD: Record<keyof typeof scripts, string> = {
@@ -15,6 +16,7 @@ const METHOD: Record<keyof typeof scripts, string> = {
   removeJob: "qiRemoveJob",
   runTask: "qiRunTask",
   deleteTask: "qiDeleteTask",
+  sidekiqRequeue: "qiSidekiqRequeue",
 };
 
 type DynamicRedis = Record<string, (...a: Array<string | number>) => Promise<unknown>>;
@@ -47,5 +49,6 @@ export function attachScripts(redis: Redis): Scripting {
     removeJob: call(METHOD.removeJob),
     runTask: call(METHOD.runTask),
     deleteTask: call(METHOD.deleteTask),
+    sidekiqRequeue: call(METHOD.sidekiqRequeue),
   };
 }

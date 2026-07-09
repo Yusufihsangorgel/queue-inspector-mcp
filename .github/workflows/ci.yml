@@ -27,10 +27,16 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.1"
       - name: Install dependencies
         run: npm ci
       - name: Install BullMQ test producer
         run: npm install --prefix verify/bullmq-producer
+      - name: Install Sidekiq test producer
+        run: bundle install
+        working-directory: verify/sidekiq-producer
       - name: Build
         run: npm run build
       - name: Test (integration, against real Redis + real producers)

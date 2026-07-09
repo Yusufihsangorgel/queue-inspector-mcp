@@ -1,4 +1,4 @@
-export type BackendName = "asynq" | "bullmq";
+export type BackendName = "asynq" | "bullmq" | "sidekiq";
 
 export interface QueueRef {
   name: string;
@@ -10,15 +10,15 @@ export type StateCounts = Record<string, number>;
 
 export interface JobSummary {
   id: string;
-  /** Asynq task type or BullMQ job name. */
+  /** Asynq task type, BullMQ job name, or Sidekiq worker class. */
   type: string;
-  /** The backend's own state name (e.g. "retry", "archived", "failed"). */
+  /** The backend's own state name (e.g. "retry", "archived", "failed", "dead"). */
   state: string;
   /** ISO 8601, or null when the backend does not record an enqueue time. */
   enqueuedAt: string | null;
-  /** Retries performed so far (Asynq `retried`, BullMQ `attemptsMade`). */
+  /** Retries performed so far (Asynq `retried`, BullMQ `attemptsMade`, Sidekiq `retry_count`). */
   attempts: number | null;
-  /** Configured retry ceiling (Asynq `retry`, BullMQ `opts.attempts`). */
+  /** Configured retry ceiling (Asynq `retry`, BullMQ `opts.attempts`, Sidekiq `retry`). */
   maxRetries: number | null;
   /** Last failure message, truncated for list views. */
   lastError: string | null;

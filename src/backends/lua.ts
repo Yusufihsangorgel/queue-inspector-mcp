@@ -17,4 +17,8 @@ export const scripts = {
   // Asynq: exact scripts from the library's rdb inspector.
   runTask: { source: load("runTask"), numberOfKeys: 3 },
   deleteTask: { source: load("deleteTask"), numberOfKeys: 2 },
+  // Sidekiq: our own faithful reproduction of Sidekiq::SortedEntry#retry ->
+  // Sidekiq::Client.push (Sidekiq implements this in Ruby, not Lua). See the
+  // script's header for how it matches the library's end state.
+  sidekiqRequeue: { source: load("sidekiqRequeue"), numberOfKeys: 3 },
 } as const;

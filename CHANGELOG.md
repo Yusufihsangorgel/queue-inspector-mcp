@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Sidekiq backend (verified against Sidekiq 6.5.12). Reports the enqueued /
+  scheduled / retry / dead states, decoding each job's JSON (class, args, jid,
+  `retry_count`, `error_message`, timestamps). `enqueued` is per-queue; the
+  `scheduled`, `retry` and `dead` sorted sets are cluster-global, as in Sidekiq
+  itself, so their counts are reported as global totals rather than per-queue
+  slices. Retry re-enqueues a job from the retry/dead set to its own queue,
+  reproducing `Sidekiq::SortedEntry#retry` → `Sidekiq::Client.push` atomically;
+  delete mirrors `Sidekiq::JobRecord#delete` / `JobSet#delete_by_value`.
+- `SIDEKIQ_PREFIX` environment variable (default empty, matching Sidekiq's bare
+  keys) for redis-namespace deployments, and `sidekiq` accepted in
+  `QUEUE_INSPECTOR_BACKENDS`.
+
 ## [0.1.0] - 2026-07-08
 
 Initial release.

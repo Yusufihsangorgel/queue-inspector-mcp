@@ -2,7 +2,7 @@
   "name": "queue-inspector-mcp",
   "version": "0.1.0",
   "mcpName": "io.github.yusufihsangorgel/queue-inspector-mcp",
-  "description": "MCP server for inspecting and operating Redis-backed job queues (Asynq and BullMQ).",
+  "description": "MCP server for inspecting and operating Redis-backed job queues (Asynq, BullMQ and Sidekiq).",
   "type": "module",
   "bin": {
     "queue-inspector-mcp": "dist/index.js"
@@ -31,6 +31,7 @@
     "queue",
     "bullmq",
     "asynq",
+    "sidekiq",
     "jobs"
   ],
   "author": "Yusuf İhsan Görgel",
