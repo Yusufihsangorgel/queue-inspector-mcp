@@ -7,6 +7,9 @@ speaks to two backends today, [Asynq](https://github.com/hibiken/asynq) (Go) and
 [BullMQ](https://github.com/taskforcesh/bullmq) (Node), reporting per-state
 counts, individual job detail, and moving jobs between states.
 
+
+> **Background:** I wrote up the design decisions behind this — why jobs, not keys, and the read-only posture — [on my blog](https://yusufihsangorgel.github.io/2026/07/08/queue-inspector-mcp.html).
+
 ## Architecture
 
 ```mermaid
