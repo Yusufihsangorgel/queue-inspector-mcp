@@ -214,7 +214,7 @@ export class BullmqBackend implements QueueBackend {
     };
   }
 
-  private toSummary(id: string, state: State, hash: JobHash): JobSummary {
+  private toSummary(id: string, state: State | "unknown", hash: JobHash): JobSummary {
     return {
       id,
       type: hash.name,
@@ -244,17 +244,25 @@ export class BullmqBackend implements QueueBackend {
   }
 
   /** Determines a job's current state by membership, mirroring BullMQ's own
-   *  getState: check the terminal and scheduling sets, then the lists. */
-  private async resolveState(queue: string, id: string): Promise<State> {
-    for (const state of ["completed", "failed", "delayed", "prioritized", "waiting-children"] as const) {
-      if ((await this.redis.zscore(this.key(queue, ZSET_STATES[state]!), id)) !== null) return state;
-    }
-    for (const state of ["active", "paused", "waiting"] as const) {
-      if ((await this.redis.lpos(this.key(queue, LIST_STATES[state]!), id)) !== null) return state;
-    }
-    // Present as a hash but not in any structure: being processed with a lock,
-    // or momentarily between states. BullMQ reports this as "active".
-    return "active";
+   *  getState (getStateV2-8.lua) exactly: the first structure that holds the id
+   *  wins, in this precise order, and "unknown" when none do. A job in the
+   *  paused list reports as "waiting": BullMQ collapses paused into waiting for
+   *  getState, even though the paused list stays listable via listJobs. */
+  private async resolveState(queue: string, id: string): Promise<State | "unknown"> {
+    const inZset = async (suffix: string): Promise<boolean> =>
+      (await this.redis.zscore(this.key(queue, suffix), id)) !== null;
+    const inList = async (suffix: string): Promise<boolean> =>
+      (await this.redis.lpos(this.key(queue, suffix), id)) !== null;
+
+    if (await inZset("completed")) return "completed";
+    if (await inZset("failed")) return "failed";
+    if (await inZset("delayed")) return "delayed";
+    if (await inZset("prioritized")) return "prioritized";
+    if (await inList("active")) return "active";
+    if (await inList("wait")) return "waiting";
+    if (await inList("paused")) return "waiting";
+    if (await inZset("waiting-children")) return "waiting-children";
+    return "unknown";
   }
 
   async retryJob(queue: string, id: string): Promise<{ ok: true; message: string }> {
