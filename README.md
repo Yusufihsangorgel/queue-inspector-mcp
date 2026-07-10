@@ -14,7 +14,41 @@ whether a dead job can be requeued. A generic Redis MCP server shows you keys
 and raw values; this one understands Asynq's protobuf task messages and
 BullMQ's state structures, so an agent can answer those questions directly.
 
-<!-- TRANSCRIPT -->
+What this looks like from the agent side. The tool output below is recorded, not mocked: a local Redis seeded with real Asynq tasks, an SMTP relay down, and one delivery out of attempts.
+
+```text
+> smtp relay was down earlier, it's back now - did we strand anything in the default queue?
+
+⏺ queues - queue_stats (MCP)(queue: "default")
+  ⎿  { "queue": "default", "backend": "asynq", "states": { "pending": 0, "active": 0,
+       "scheduled": 6, "retry": 38, "archived": 1, "completed": 57 } }
+
+⏺ 38 tasks are stuck in retry and one is archived. Sampling the retries to see why.
+⏺ queues - list_jobs (MCP)(queue: "default", state: "retry", limit: 3)
+  ⎿  { …, "count": 3, "jobs": [
+       { "id": "46c6ba86-…", "type": "email:deliver", …, "attempts": 5, "maxRetries": 25,
+         "lastError": "dial tcp 127.0.0.1:2525: connect: connection refused" }, … ] }
+
+⏺ Every sampled retry is email:deliver failing to reach the relay; those re-run on their own
+  now that it's back. The archived task is out of attempts — it never will.
+⏺ queues - list_jobs (MCP)(queue: "default", state: "archived", limit: 1)
+  ⎿  { …, "count": 1, "jobs": [ { "id": "814cc556-04a8-4923-8de5-71a661c6063c", … } ] }
+⏺ queues - get_job (MCP)(queue: "default", id: "814cc556-04a8-4923-8de5-71a661c6063c")
+  ⎿  { …, "type": "email:deliver", "state": "archived", …, "attempts": 8, "maxRetries": 8,
+       …, "fullError": "dial tcp 127.0.0.1:2525: connect: connection refused",
+       "timestamps": { …, "lastFailedAt": "2026-07-10T14:01:40.000Z", … },
+       "payload": "{\"to\":\"dana@example.test\",\"template\":\"receipt\"}", … }
+
+⏺ A receipt email that burned all 8 attempts during the outage. Requeuing it.
+⏺ queues - retry_job (MCP)(queue: "default", id: "814cc556-04a8-4923-8de5-71a661c6063c")
+  ⎿  { "ok": true, "message": "asynq task 814cc556-04a8-4923-8de5-71a661c6063c moved to
+       pending in queue \"default\"" }
+
+⏺ queues - queue_stats (MCP)(queue: "default")
+  ⎿  { "queue": "default", "backend": "asynq", "states": { "pending": 1, "active": 0,
+       "scheduled": 6, "retry": 38, "archived": 0, "completed": 57 } }
+⏺ The receipt is back in pending. The other 38 will re-run as their backoff timers come due.
+```
 
 > **Background:** I wrote up the design decisions behind this — why jobs, not keys, and the read-only posture — [on my blog](https://yusufihsangorgel.github.io/2026/07/08/queue-inspector-mcp.html).
 
