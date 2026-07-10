@@ -9,8 +9,13 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const redis = createRedis(config.redisUrl);
   const registry = new BackendRegistry(redis, config);
-  const server = createServer({ registry, readOnly: config.readOnly });
+  const { server, drained } = createServer({
+    registry,
+    readOnly: config.readOnly,
+    redisUrl: config.redisUrl,
+  });
 
+  let closing = false;
   const shutdown = async () => {
     try {
       await server.close();
@@ -18,11 +23,25 @@ async function main(): Promise<void> {
       redis.disconnect();
     }
   };
-  process.on("SIGINT", () => void shutdown().then(() => process.exit(0)));
-  process.on("SIGTERM", () => void shutdown().then(() => process.exit(0)));
+  const closeAndExit = () => {
+    if (closing) return;
+    closing = true;
+    void shutdown().then(() => process.exit(0));
+  };
+  process.on("SIGINT", closeAndExit);
+  process.on("SIGTERM", closeAndExit);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  // Stdio clients signal shutdown by closing the pipe, not by signal; without
+  // these hooks the Redis connection keeps the process alive after the client
+  // has gone. Piped-in request handlers start on the microtask queue, so give
+  // them a turn before sampling the in-flight count; once it drains, dropping
+  // Redis lets the process exit naturally with every response flushed.
+  server.server.onclose = closeAndExit;
+  process.stdin.on("end", () => {
+    setImmediate(() => void drained().then(() => redis.disconnect()));
+  });
   // stderr is safe for logs; stdout carries the MCP protocol.
   const mode = config.readOnly ? " (read-only)" : "";
   process.stderr.write(

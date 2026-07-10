@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { BackendRegistry } from "./backends/index.js";
 import { BackendError } from "./types.js";
 
-const SERVER_VERSION = "0.1.0";
+const SERVER_VERSION = "0.1.1";
 
 const backendArg = z
   .enum(["asynq", "bullmq"])
@@ -25,24 +25,72 @@ function fail(message: string): ToolResult {
   return { content: [{ type: "text", text: message }], isError: true };
 }
 
-/** Runs a handler, turning known backend errors and connection failures into
- *  tool errors instead of letting them crash the transport. */
-async function guard(run: () => Promise<ToolResult>): Promise<ToolResult> {
+/** Node syscall failures that mean the Redis server could not be reached. */
+const CONNECTION_CODES = new Set(["ECONNREFUSED", "ENOTFOUND", "ETIMEDOUT", "ECONNRESET"]);
+
+/** True for errors that mean Redis could not be reached at all, as opposed to
+ *  a bad request. ioredis does not export the classes involved, so match by
+ *  name, message and errno. */
+function isConnectionError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  if (err.name === "MaxRetriesPerRequestError") return true;
+  if (err.message === "Connection is closed.") return true;
+  const code = (err as NodeJS.ErrnoException).code;
+  return code !== undefined && CONNECTION_CODES.has(code);
+}
+
+/** REDIS_URL may embed credentials; strip them before echoing the URL back. */
+function withoutCredentials(url: string): string {
   try {
-    return await run();
-  } catch (err) {
-    if (err instanceof BackendError) return fail(`${err.code}: ${err.message}`);
-    return fail(err instanceof Error ? err.message : String(err));
+    const parsed = new URL(url);
+    parsed.username = "";
+    parsed.password = "";
+    return parsed.toString();
+  } catch {
+    return url;
   }
 }
 
 export interface ServerOptions {
   registry: BackendRegistry;
   readOnly: boolean;
+  /** Used to name the Redis target in connection-failure messages. */
+  redisUrl: string;
 }
 
-export function createServer({ registry, readOnly }: ServerOptions): McpServer {
+export interface ServerHandle {
+  server: McpServer;
+  /** Resolves once no tool call is running (immediately when idle), so the
+   *  entrypoint can answer piped-in requests before shutting down. */
+  drained: () => Promise<void>;
+}
+
+export function createServer({ registry, readOnly, redisUrl }: ServerOptions): ServerHandle {
   const server = new McpServer({ name: "queue-inspector-mcp", version: SERVER_VERSION });
+
+  let inFlight = 0;
+  const drainWaiters: Array<() => void> = [];
+
+  /** Runs a handler, turning known backend errors and connection failures into
+   *  tool errors instead of letting them crash the transport. */
+  const guard = async (run: () => Promise<ToolResult>): Promise<ToolResult> => {
+    inFlight += 1;
+    try {
+      return await run();
+    } catch (err) {
+      if (err instanceof BackendError) return fail(`${err.code}: ${err.message}`);
+      if (isConnectionError(err)) {
+        return fail(
+          `redis_unavailable: cannot reach Redis at ${withoutCredentials(redisUrl)}; ` +
+            "check that it is running and that REDIS_URL is correct",
+        );
+      }
+      return fail(err instanceof Error ? err.message : String(err));
+    } finally {
+      inFlight -= 1;
+      if (inFlight === 0) for (const wake of drainWaiters.splice(0)) wake();
+    }
+  };
 
   server.registerTool(
     "list_queues",
@@ -157,5 +205,9 @@ export function createServer({ registry, readOnly }: ServerOptions): McpServer {
     );
   }
 
-  return server;
+  return {
+    server,
+    drained: () =>
+      inFlight === 0 ? Promise.resolve() : new Promise((resolve) => drainWaiters.push(resolve)),
+  };
 }
