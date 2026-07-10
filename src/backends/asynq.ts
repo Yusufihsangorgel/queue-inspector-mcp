@@ -7,7 +7,7 @@ import {
   type QueueBackend,
   type StateCounts,
 } from "../types.js";
-import { decodePayload, isoFromUnixSeconds, truncate } from "../format.js";
+import { decodePayload, isoFromMillis, isoFromUnixSeconds, truncate } from "../format.js";
 import { decodeTaskMessage } from "./asynq-proto.js";
 import { attachScripts, type Scripting } from "./scripting.js";
 
@@ -165,12 +165,14 @@ export class AsynqBackend implements QueueBackend {
   }
 
   /** Asynq's TaskMessage carries no enqueue time; a pending task does record a
-   *  `pending_since` field in nanoseconds, which is the closest equivalent. */
+   *  `pending_since` field in nanoseconds, which is the closest equivalent.
+   *  Routed through isoFromMillis so a malformed value yields null rather than a
+   *  RangeError out of Date.toISOString(). */
   private async enqueuedAt(queue: string, id: string, state: State): Promise<string | null> {
     if (state !== "pending") return null;
     const ns = await this.redis.hget(this.taskKey(queue, id), "pending_since");
     if (!ns) return null;
-    return new Date(Number(ns) / 1e6).toISOString();
+    return isoFromMillis(Number(ns) / 1e6);
   }
 
   async retryJob(queue: string, id: string): Promise<{ ok: true; message: string }> {
