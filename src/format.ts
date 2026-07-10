@@ -21,6 +21,16 @@ function looksLikeText(buf: Buffer): boolean {
   return true;
 }
 
+/** Returns the first `maxBytes` of `buf`, stepped back off any trailing
+ *  continuation byte so the cut never lands inside a multibyte UTF-8 sequence.
+ *  Without this, truncating a text payload mid-character makes the text check
+ *  below reject the whole thing and render valid text as base64. */
+function utf8Boundary(buf: Buffer, maxBytes: number): Buffer {
+  let end = maxBytes;
+  while (end > 0 && (buf[end]! & 0xc0) === 0x80) end--;
+  return buf.subarray(0, end);
+}
+
 /**
  * Renders a raw payload for display. Text is returned as UTF-8; binary or
  * otherwise non-text bytes are returned base64-encoded. Either way the result
@@ -29,7 +39,7 @@ function looksLikeText(buf: Buffer): boolean {
  */
 export function decodePayload(buf: Buffer, maxBytes = 8 * 1024): DecodedPayload {
   const truncated = buf.length > maxBytes;
-  const slice = truncated ? buf.subarray(0, maxBytes) : buf;
+  const slice = truncated ? utf8Boundary(buf, maxBytes) : buf;
   const isText = looksLikeText(slice);
   return {
     payload: isText ? slice.toString("utf8") : slice.toString("base64"),
@@ -46,10 +56,14 @@ export function truncate(text: string, max = 240): string {
 
 export function isoFromUnixSeconds(seconds: number | null | undefined): string | null {
   if (!seconds || seconds <= 0) return null;
-  return new Date(seconds * 1000).toISOString();
+  return isoFromMillis(seconds * 1000);
 }
 
 export function isoFromMillis(ms: number | null | undefined): string | null {
   if (!ms || ms <= 0) return null;
-  return new Date(ms).toISOString();
+  // A malformed or misdecoded message can carry a timestamp past the ±8.64e15ms
+  // Date range; toISOString() throws RangeError on such a value, so fall back to
+  // null rather than letting one bad field abort the whole job read.
+  const date = new Date(ms);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
