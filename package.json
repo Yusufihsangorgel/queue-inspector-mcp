@@ -1,6 +1,6 @@
 {
   "name": "queue-inspector-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "mcpName": "io.github.yusufihsangorgel/queue-inspector-mcp",
   "description": "MCP server for inspecting and operating Redis-backed job queues (Asynq and BullMQ).",
   "type": "module",
