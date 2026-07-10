@@ -79,9 +79,14 @@ class Reader {
       case 1:
         this.pos += 8;
         return;
-      case 2:
-        this.pos += this.varint();
+      case 2: {
+        // Read the length into a local first. `this.pos += this.varint()` binds
+        // this.pos before varint() advances it over the length prefix, so that
+        // advance is lost and pos lands short — the next tag is read mid-field.
+        const len = this.varint();
+        this.pos += len;
         return;
+      }
       case 5:
         this.pos += 4;
         return;
