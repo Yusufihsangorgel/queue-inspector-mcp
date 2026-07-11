@@ -1,6 +1,6 @@
 {
   "name": "queue-inspector-mcp",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "mcpName": "io.github.yusufihsangorgel/queue-inspector-mcp",
   "description": "MCP server for inspecting and operating Redis-backed job queues (Asynq and BullMQ).",
   "type": "module",
@@ -33,7 +33,7 @@
     "asynq",
     "jobs"
   ],
-  "author": "Yusuf İhsan Görgel",
+  "author": "Yusuf \u0130hsan G\u00f6rgel",
   "license": "MIT",
   "repository": {
     "type": "git",

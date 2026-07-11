@@ -3,8 +3,8 @@
 [![npm](https://img.shields.io/npm/v/queue-inspector-mcp)](https://www.npmjs.com/package/queue-inspector-mcp) [![CI](https://github.com/Yusufihsangorgel/queue-inspector-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Yusufihsangorgel/queue-inspector-mcp/actions/workflows/ci.yml)
 
 An MCP server that lets an agent inspect and operate Redis-backed job queues.
-It speaks to two backends today, [Asynq](https://github.com/hibiken/asynq) (Go)
-and [BullMQ](https://github.com/taskforcesh/bullmq) (Node): per-state counts,
+It speaks to three backends today, [Asynq](https://github.com/hibiken/asynq) (Go)
+and [BullMQ](https://github.com/taskforcesh/bullmq) (Node) and [Sidekiq](https://github.com/sidekiq/sidekiq) (Ruby): per-state counts,
 individual job detail, and moving jobs between states — six tools over stdio,
 with a `--read-only` mode that drops the mutating ones entirely.
 
@@ -12,7 +12,7 @@ When a queue misbehaves in production, the useful questions are about jobs, not
 keys: how many tasks are stuck in retry, what error a specific job failed with,
 whether a dead job can be requeued. A generic Redis MCP server shows you keys
 and raw values; this one understands Asynq's protobuf task messages and
-BullMQ's state structures, so an agent can answer those questions directly.
+BullMQ's state structures, and Sidekiq's inline job JSON, so an agent can answer those questions directly.
 
 What this looks like from the agent side. The tool output below is recorded, not mocked: a local Redis seeded with real Asynq tasks, an SMTP relay down, and one delivery out of attempts.
 
@@ -63,6 +63,7 @@ flowchart LR
     A["AI agent"] -->|"MCP · stdio"| M["queue-inspector-mcp"]
     M --> B1["Asynq adapter<br/>protobuf msg"]
     M --> B2["BullMQ adapter<br/>state by zset"]
+    M --> B3["Sidekiq adapter<br/>job JSON in lists + zsets"]
     B1 -->|ioredis| R[("Redis")]
     B2 -->|ioredis| R
     M -.->|"--read-only<br/>drops mutating tools"| G{{"prod-safe"}}
@@ -70,7 +71,7 @@ flowchart LR
 
 The server speaks MCP over stdio to the agent and talks to Redis through
 per-backend adapters that understand each library's Redis key layout — Asynq's
-protobuf task messages and BullMQ's state-by-membership sorted sets — instead of
+protobuf task messages, BullMQ's state-by-membership sorted sets, and Sidekiq's inline job JSON — instead of
 treating Redis as a bag of keys.
 
 ## Why an MCP server instead of the CLI
@@ -136,7 +137,8 @@ Both examples are read-only. To enable `retry_job` and `delete_job`, remove
 | `REDIS_URL` | `redis://localhost:6379` | Redis connection string. Include a database number, e.g. `redis://localhost:6379/2`. |
 | `ASYNQ_PREFIX` | `asynq` | Key prefix Asynq was configured with. |
 | `BULL_PREFIX` | `bull` | Key prefix BullMQ was configured with. |
-| `QUEUE_INSPECTOR_BACKENDS` | `asynq,bullmq` | Restrict which backends are scanned. |
+| `SIDEKIQ_PREFIX` | (none) | Key prefix Sidekiq was configured with, if namespaced. |
+| `QUEUE_INSPECTOR_BACKENDS` | `asynq,bullmq,sidekiq` | Restrict which backends are scanned. |
 | `QUEUE_INSPECTOR_READ_ONLY` | unset | Set to `1` (or pass `--read-only`) to omit the mutating tools. |
 
 ## Tools
@@ -151,7 +153,7 @@ Both examples are read-only. To enable `retry_job` and `delete_job`, remove
 | `delete_job` | yes | Permanently delete a job. Active jobs are refused. |
 
 When a queue name is unique across the enabled backends, the `backend` argument
-is optional; the server resolves it. If the same name exists in both backends,
+is optional; the server resolves it. If the same name exists in more than one backend,
 pass `backend` explicitly.
 
 ## Read-only mode

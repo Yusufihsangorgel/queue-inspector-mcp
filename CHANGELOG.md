@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0
+
+- Add a Sidekiq backend: inspect Ruby job queues (enqueued, scheduled, retry, dead) alongside Asynq and BullMQ. Full read plus retry and delete, verified against Sidekiq 6.5.
+
+
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
