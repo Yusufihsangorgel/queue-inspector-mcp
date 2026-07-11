@@ -26,12 +26,16 @@
   },
   "keywords": [
     "mcp",
+    "mcp-server",
     "modelcontextprotocol",
     "redis",
     "queue",
+    "job-queue",
+    "jobs",
+    "sidekiq",
     "bullmq",
     "asynq",
-    "jobs"
+    "ruby"
   ],
   "author": "Yusuf \u0130hsan G\u00f6rgel",
   "license": "MIT",
