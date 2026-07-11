@@ -1,4 +1,4 @@
-export type BackendName = "asynq" | "bullmq";
+export type BackendName = "asynq" | "bullmq" | "sidekiq";
 
 export interface QueueRef {
   name: string;

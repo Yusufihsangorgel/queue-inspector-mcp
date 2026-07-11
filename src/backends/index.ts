@@ -3,9 +3,11 @@ import type { Config } from "../config.js";
 import { BackendError, type BackendName, type QueueBackend, type QueueRef } from "../types.js";
 import { AsynqBackend } from "./asynq.js";
 import { BullmqBackend } from "./bullmq.js";
+import { SidekiqBackend } from "./sidekiq.js";
 
 export { AsynqBackend } from "./asynq.js";
 export { BullmqBackend } from "./bullmq.js";
+export { SidekiqBackend } from "./sidekiq.js";
 
 /** Holds the enabled backends and maps a queue name to the backend that owns it. */
 export class BackendRegistry {
@@ -15,6 +17,7 @@ export class BackendRegistry {
     for (const name of config.backends) {
       if (name === "asynq") this.backends.set(name, new AsynqBackend(redis, config.asynqPrefix));
       if (name === "bullmq") this.backends.set(name, new BullmqBackend(redis, config.bullPrefix));
+      if (name === "sidekiq") this.backends.set(name, new SidekiqBackend(redis, config.sidekiqPrefix));
     }
   }
 

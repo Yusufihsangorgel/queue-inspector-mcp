@@ -6,7 +6,7 @@ import { BackendError } from "./types.js";
 const SERVER_VERSION = "0.1.1";
 
 const backendArg = z
-  .enum(["asynq", "bullmq"])
+  .enum(["asynq", "bullmq", "sidekiq"])
   .optional()
   .describe("Which backend owns the queue. Optional when the queue name is unique across backends.");
 const queueArg = z.string().min(1).describe("Queue name, as reported by list_queues.");
@@ -132,7 +132,8 @@ export function createServer({ registry, readOnly, redisUrl }: ServerOptions): S
       description:
         "List jobs in a given state (paged). Returns id, type, attempts and a truncated last error. " +
         "Valid states depend on the backend: asynq uses pending/active/scheduled/retry/archived/completed; " +
-        "bullmq uses waiting/active/delayed/prioritized/waiting-children/paused/completed/failed.",
+        "bullmq uses waiting/active/delayed/prioritized/waiting-children/paused/completed/failed; " +
+        "sidekiq uses enqueued/scheduled/retry/dead.",
       inputSchema: {
         queue: queueArg,
         state: z.string().min(1).describe("State to list, e.g. \"failed\" (bullmq) or \"archived\" (asynq)."),
