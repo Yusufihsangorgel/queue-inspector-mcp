@@ -54,6 +54,27 @@ describe("decodePayload", () => {
     expect(out.payloadBytes).toBe(buf.length);
   });
 
+  it("keeps an oversize all-continuation-byte payload as base64 rather than erasing it", () => {
+    // 9000 bytes of 0x80 (a realistic run inside a >8KB binary job payload). The
+    // cut at 8192 lands on a continuation byte; an uncapped backup walked end to
+    // 0 and returned an empty "utf8" payload, silently dropping the binary blob.
+    const out = decodePayload(Buffer.alloc(9000, 0x80));
+    expect(out.payloadEncoding).toBe("base64");
+    expect(out.payload.length).toBeGreaterThan(0);
+    expect(out.payloadBytes).toBe(9000);
+    expect(out.payloadTruncated).toBe(true);
+  });
+
+  it("backs up at most three bytes off the cut point", () => {
+    // 'A' * 5, then a run of continuation bytes that spans the 10-byte cut. The
+    // backup must stop 3 bytes back (index 7), not chase the whole run down to 4.
+    const buf = Buffer.alloc(20, 0x41);
+    for (let i = 5; i < 15; i++) buf[i] = 0x80;
+    const out = decodePayload(buf, 10);
+    expect(out.payloadEncoding).toBe("base64");
+    expect(Buffer.from(out.payload, "base64").length).toBe(7);
+  });
+
   it("handles an empty buffer as empty text", () => {
     const out = decodePayload(Buffer.alloc(0));
     expect(out.payloadEncoding).toBe("utf8");

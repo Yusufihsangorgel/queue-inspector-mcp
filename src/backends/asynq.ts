@@ -8,7 +8,7 @@ import {
   type StateCounts,
 } from "../types.js";
 import { decodePayload, isoFromMillis, isoFromUnixSeconds, truncate } from "../format.js";
-import { decodeTaskMessage } from "./asynq-proto.js";
+import { decodeTaskMessage, type AsynqTaskMessage } from "./asynq-proto.js";
 import { attachScripts, type Scripting } from "./scripting.js";
 
 // State names as Asynq itself uses them, in a natural lifecycle order. Group
@@ -116,10 +116,33 @@ export class AsynqBackend implements QueueBackend {
     return this.readTaskDetail(queue, id, state);
   }
 
+  // A corrupt or partially written `msg` throws out of the decoder. Left
+  // unguarded it would reject the whole listJobs/getJob call, making an entire
+  // page unviewable over one bad task and hiding which task is at fault. Decode
+  // failures are isolated here so the row still surfaces with its id.
+  private decodeMsg(raw: Buffer): AsynqTaskMessage | { error: string } {
+    try {
+      return decodeTaskMessage(raw);
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
   private async readTask(queue: string, id: string, state: State): Promise<JobSummary | null> {
     const raw = await this.redis.hgetBuffer(this.taskKey(queue, id), "msg");
     if (raw === null) return null;
-    const msg = decodeTaskMessage(raw);
+    const msg = this.decodeMsg(raw);
+    if ("error" in msg) {
+      return {
+        id,
+        type: "(unreadable)",
+        state,
+        enqueuedAt: null,
+        attempts: null,
+        maxRetries: null,
+        lastError: `could not decode task message: ${msg.error}`,
+      };
+    }
     return {
       id,
       type: msg.type,
@@ -134,7 +157,27 @@ export class AsynqBackend implements QueueBackend {
   private async readTaskDetail(queue: string, id: string, state: State): Promise<JobDetail | null> {
     const raw = await this.redis.hgetBuffer(this.taskKey(queue, id), "msg");
     if (raw === null) return null;
-    const msg = decodeTaskMessage(raw);
+    const msg = this.decodeMsg(raw);
+    if ("error" in msg) {
+      const detail = `could not decode task message: ${msg.error}`;
+      return {
+        id,
+        queue,
+        backend: this.name,
+        type: "(unreadable)",
+        state,
+        enqueuedAt: null,
+        attempts: null,
+        maxRetries: null,
+        lastError: detail,
+        fullError: detail,
+        timestamps: {},
+        payload: "",
+        payloadEncoding: "utf8",
+        payloadBytes: 0,
+        payloadTruncated: false,
+      };
+    }
     const decoded = decodePayload(msg.payload);
 
     const timestamps: Record<string, string | null> = {

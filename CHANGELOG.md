@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-07-11
+
+### Fixed
+
+- Listing a queue no longer fails as a whole when a single task holds a corrupt
+  or truncated protobuf message. The bad row is now surfaced with a
+  `(unreadable)` type and its decode error, so the rest of the page still lists
+  and the corrupt task stays identifiable by id (and deletable).
+- Oversized binary payloads are no longer silently erased and mislabeled as
+  text. The UTF-8 boundary trim now backs up at most three bytes, so a long run
+  of continuation bytes is treated as binary and reported as base64 rather than
+  collapsing to an empty string.
+
 ## [0.1.1] - 2026-07-10
 
 ### Changed

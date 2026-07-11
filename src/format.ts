@@ -27,7 +27,12 @@ function looksLikeText(buf: Buffer): boolean {
  *  below reject the whole thing and render valid text as base64. */
 function utf8Boundary(buf: Buffer, maxBytes: number): Buffer {
   let end = maxBytes;
-  while (end > 0 && (buf[end]! & 0xc0) === 0x80) end--;
+  // A UTF-8 character carries at most three continuation bytes, so never back
+  // up further than that. On binary data a longer run of 0x80-0xBF bytes is not
+  // a split character; trimming through it would erase real bytes and, at the
+  // extreme, return an empty slice that then gets mislabelled as text.
+  const floor = Math.max(0, maxBytes - 3);
+  while (end > floor && (buf[end]! & 0xc0) === 0x80) end--;
   return buf.subarray(0, end);
 }
 
