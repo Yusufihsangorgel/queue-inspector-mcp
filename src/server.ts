@@ -55,6 +55,9 @@ export function createServer({ registry, readOnly }: ServerOptions): McpServer {
     },
     async ({ backend }) =>
       guard(async () => {
+        if (backend && !registry.isEnabled(backend)) {
+          throw new BackendError(`backend "${backend}" is not enabled`, "not_allowed");
+        }
         const queues = await registry.allQueues();
         const filtered = backend ? queues.filter((q) => q.backend === backend) : queues;
         return ok({ count: filtered.length, queues: filtered });

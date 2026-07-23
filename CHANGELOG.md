@@ -20,6 +20,17 @@ All notable changes to this project are documented here. The format follows
   keys) for redis-namespace deployments, and `sidekiq` accepted in
   `QUEUE_INSPECTOR_BACKENDS`.
 
+### Fixed
+
+- `list_queues`'s `backend` filter now rejects a backend name that is not
+  enabled, instead of silently reporting zero queues. Previously it only
+  filtered the queues returned by already-constructed backends, so asking
+  about a real but disabled backend (e.g. under `QUEUE_INSPECTOR_BACKENDS`)
+  returned `{count: 0, queues: []}` instead of an error. It now raises the
+  same `not_allowed: backend "X" is not enabled` error that `queue_stats`,
+  `list_jobs`, `get_job`, `retry_job` and `delete_job` already raise for the
+  identical condition.
+
 ## [0.1.0] - 2026-07-08
 
 Initial release.

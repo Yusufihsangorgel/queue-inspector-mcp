@@ -25,6 +25,11 @@ export class BackendRegistry {
     return [...this.backends.values()];
   }
 
+  /** Whether `name` was enabled (constructed) for this server instance. */
+  isEnabled(name: BackendName): boolean {
+    return this.backends.has(name);
+  }
+
   async allQueues(): Promise<QueueRef[]> {
     const refs: QueueRef[] = [];
     for (const backend of this.list()) {
